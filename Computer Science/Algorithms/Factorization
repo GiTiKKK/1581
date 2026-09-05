@@ -1,0 +1,19 @@
+def f(x): #ФАКТОРИЗАЦИЯ
+    a = []
+    d = 2
+    while d ** 2 <= x:
+        while x % d == 0:
+            a.append(d)
+            x //= d
+        d += 1
+    if x > 1:
+        a.append(x)
+    return a
+
+def pr(x): #ПРОВЕРКА НА ПРОСТОЕ ЧИСЛО
+    if x < 2:
+        return 0
+    for i in range(2, int(x ** 0.5) + 1):
+        if x % i == 0:
+            return 0
+    return 1

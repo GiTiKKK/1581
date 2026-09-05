@@ -1,0 +1,10 @@
+def f(st, fi): #ИЩЕТ ПРОСТЫЕ ЧИСЛА В ДИАПАЗОНЕ
+    n = 0
+    m = [True] * (fi + 1)
+    m[0] = m[1] = False
+    for i in range(2, fi + 1):
+        if m[i]:
+            if st <= i <= fi:
+                print(n, i)
+            for j in range(i ** 2, fi + 1, i):
+                m[j] = False

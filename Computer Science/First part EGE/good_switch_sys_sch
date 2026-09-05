@@ -1,0 +1,19 @@
+digits = "0123456789ABCDEFGIHKLMNOPRSTUVWXYZ"
+
+input_sys = int(input('\nВведите систему счисления: '))
+input_digit = input('\nВведите число: ')
+result_sys = int(input('\nВведите нужную систему счисления: '))
+
+x = 0
+for i in input_digit:
+    d = digits.find(i)
+    x = x * input_sys + d
+
+if x == 0:
+    print('0')
+else:
+    res = ''
+    while x > 0:
+        res = digits[x % result_sys] + res
+        x //= result_sys
+    print(f'\nРезультат: {res}')

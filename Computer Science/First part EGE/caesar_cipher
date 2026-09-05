@@ -1,0 +1,48 @@
+alph_eng_upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+alph_eng_lower = 'abcdefghijklmnopqrstuvwxyz'
+
+alph_ru_upper = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
+alph_ru_lower = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+
+def caesar(text, k):
+    result = ''
+    for char in text:
+
+        if char in alph_eng_upper:
+            alph = alph_eng_upper
+
+        elif char in alph_eng_lower:
+            alph = alph_eng_lower
+
+        elif char in alph_ru_upper:
+            alph = alph_ru_upper
+
+        elif char in alph_ru_lower:
+            alph = alph_ru_lower
+
+        else:
+            result += char
+            continue
+
+        index = alph.index(char)
+        new_index = (index + k) % len(alph)
+        result += alph[new_index]
+
+    return result
+
+print('1 — Шифрование / дешифровка')
+print('2 — Расшифровка неизвестного сдвига')
+
+mode = int(input('Выберите режим: '))
+
+text = input('Введите текст: ')
+
+if mode == 1:
+    k = int(input('Введите шаг сдвига: '))
+    print('Результат:')
+    print(caesar(text, k))
+
+elif mode == 2:
+    print('Возможные варианты:')
+    for k in range(26):
+        print(f'{k}: {caesar(text, -k)}')
