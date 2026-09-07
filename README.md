@@ -1,2 +1,2 @@
-# My school dump and all 
-# sorts of useful stuff
+My school dump and all 
+sorts of useful stuff
