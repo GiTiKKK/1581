@@ -1,94 +1,45 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Страница авторизации</title>
-    <style>
-        /* Основные стили страницы */
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f2f5; /* Светло-серый фон */
-            display: flex;
-            justify-content: center; /* Центрирование по горизонтали */
-            align-items: center;     /* Центрирование по вертикали */
-            height: 100vh;           /* Высота на весь экран */
-            margin: 0;
-        }
-
-        /* Карточка с формой */
-        .login-card {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;     /* Скругленные углы */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Легкая тень */
-            width: 100%;
-            max-width: 350px;
-        }
-
-        /* Заголовок */
-        .login-card h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        /* Поля ввода */
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box; /* Чтобы padding не увеличивал ширину */
-        }
-
-        /* Кнопка */
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff; /* Синий цвет */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            background-color: #0056b3; /* Темно-синий при наведении */
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Вход</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 60px auto; }
+    input { display: block; width: 100%; margin: 8px 0; padding: 8px; box-sizing: border-box; }
+    button { padding: 10px 20px; cursor: pointer; }
+    .err { color: red; }
+  </style>
 </head>
 <body>
+  <h2>Вход</h2>
+  <input id="inp-email" type="email" placeholder="Email">
+  <input id="inp-password" type="password" placeholder="Пароль">
+  <button onclick="doLogin()">Войти</button>
+  <p class="err" id="err"></p>
+  <p><a href="/">Нет аккаунта? Зарегистрироваться</a></p>
 
-    <div class="login-card">
-        <h2>Вход в систему</h2>
-        <form action="#" method="post">
-            <div class="form-group">
-                <label for="username">Логин или Email</label>
-                <input type="text" id="username" name="username" placeholder="Введите логин" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Пароль</label>
-                <input type="password" id="password" name="password" placeholder="Введите пароль" required>
-            </div>
-            <button type="submit">Войти</button>
-        </form>
-        <div class="switch-link">
-            <a href="/">Зарегистрироваться</a>
-        </div>
-    </div>
-
+  <script>
+    async function doLogin() {
+      const body = {
+        email:    document.getElementById('inp-email').value.trim(),
+        password: document.getElementById('inp-password').value,
+      };
+      try {
+        const res = await fetch('/user_login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.result) {
+          location.href = '/lk';
+        } else {
+          document.getElementById('err').textContent = data.error || 'Ошибка входа';
+        }
+      } catch (e) {
+        document.getElementById('err').textContent = 'Ошибка сети: ' + e.message;
+      }
+    }
+  </script>
 </body>
 </html>

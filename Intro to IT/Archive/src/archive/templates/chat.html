@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Запрос к нейросети</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 40px auto; }
+    #log { border: 1px solid #ccc; border-radius: 6px; padding: 12px;
+           height: 400px; overflow-y: auto; margin-bottom: 10px; background: #fafafa; }
+    .msg { margin: 6px 0; }
+    .me { color: #2563eb; }
+    .bot { color: #16a34a; white-space: pre-wrap; }
+    textarea { width: 100%; box-sizing: border-box; padding: 8px; height: 70px; }
+    button { padding: 10px 20px; margin-top: 6px; cursor: pointer; }
+    a.back { display: inline-block; margin-top: 20px; }
+    .loading { color: #888; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h2>Запрос к нейросети</h2>
+  <div id="log"></div>
+  <textarea id="msg" placeholder="Введите вопрос..."></textarea>
+  <button onclick="send()">Отправить</button>
+  <a class="back" href="/lk">← Назад в ЛК</a>
+
+  <script>
+    async function send() {
+      const text = document.getElementById('msg').value.trim();
+      if (!text) return;
+      const log = document.getElementById('log');
+
+      log.innerHTML += '<div class="msg me">Вы: ' + text + '</div>';
+      log.innerHTML += '<div class="msg loading" id="loading">Нейросеть думает...</div>';
+      log.scrollTop = log.scrollHeight;
+      document.getElementById('msg').value = '';
+
+      try {
+        const res = await fetch('/chat_send', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await res.json();
+        const loading = document.getElementById('loading');
+        if (loading) loading.remove();
+
+        if (data.answer) {
+          log.innerHTML += '<div class="msg bot">Нейросеть: ' + data.answer + '</div>';
+        } else {
+          log.innerHTML += '<div class="msg bot" style="color:red">Ошибка: ' + (data.error || 'нет ответа') + '</div>';
+        }
+      } catch (e) {
+        const loading = document.getElementById('loading');
+        if (loading) loading.remove();
+        log.innerHTML += '<div class="msg bot" style="color:red">Ошибка сети: ' + e.message + '</div>';
+      }
+      log.scrollTop = log.scrollHeight;
+    }
+  </script>
+</body>
+</html>

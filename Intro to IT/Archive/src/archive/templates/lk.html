@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Личный кабинет</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 60px auto; }
+    .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
+    .row { margin: 8px 0; }
+    .buttons { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+    a.btn {
+      display: inline-block; padding: 10px 20px;
+      background: #2563eb; color: #fff; text-decoration: none;
+      border-radius: 6px;
+    }
+    a.btn.secondary { background: #16a34a; }
+    a.logout { color: #888; margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Личный кабинет</h2>
+    <div class="row"><b>Имя:</b> {{ user.username }}</div>
+    <div class="row"><b>Фамилия:</b> {{ user.surname }}</div>
+    <div class="row"><b>Email:</b> {{ user.email }}</div>
+    <div class="row"><b>Баланс:</b> {{ user.balance }} ₽</div>
+
+    <div class="buttons">
+      <a class="btn" href="/history">История</a>
+      <a class="btn secondary" href="/chat">Отправить запрос в нейросеть</a>
+    </div>
+    <p><a class="logout" href="/logout">Выйти</a></p>
+  </div>
+</body>
+</html>
