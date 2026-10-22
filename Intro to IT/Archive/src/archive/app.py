@@ -10,18 +10,18 @@ import os
 app = Flask(__name__)
 app.secret_key = "change-me-to-a-long-random-string"
 
-# ---------- Нейросеть (можно отключить, обернув в try) ----------
+# ---------- Нейросеть (модель Qwen 0.5B) ----------
 llm = None
 try:
     from llama_cpp import Llama
     llm = Llama(
-        model_path="./models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        model_path="./models/qwen2.5-0.5b-instruct-q4_k_m.gguf",
         n_ctx=4096,
         n_threads=os.cpu_count() or 4,
         n_gpu_layers=0,
         verbose=False,
     )
-    print("Модель загружена")
+    print("Модель загружена успешно.")
 except Exception as e:
     print("Нейросеть не загружена:", e)
 
@@ -61,26 +61,26 @@ def user_register():
     if not name or not email or not password:
         return jsonify({'result': False, 'error': 'Заполните имя, email и пароль'})
 
-    password_hash = generate_password_hash(password)   # сохраняем ЦЕЛИКОМ
+    password_hash = generate_password_hash(password)
 
     cnx = get_db()
     cur = cnx.cursor()
     try:
+        # Устанавливаем баланс 1000 по умолчанию для новых пользователей
         cur.execute(
-            'INSERT INTO `users`(`username`, `surname`, `email`, `password_hash`) '
-            'VALUES (%s, %s, %s, %s)',
+            'INSERT INTO `users`(`username`, `surname`, `email`, `password_hash`, `balance`) '
+            'VALUES (%s, %s, %s, %s, 1000)',
             (name, surname, email, password_hash)
         )
         cnx.commit()
+        return jsonify({'result': True})
     except mysql.connector.IntegrityError:
-        cur.close(); cnx.close()
         return jsonify({'result': False, 'error': 'Такой email уже зарегистрирован'})
     except Exception as e:
-        cur.close(); cnx.close()
         return jsonify({'result': False, 'error': str(e)})
-
-    cur.close(); cnx.close()
-    return jsonify({'result': True})
+    finally:
+        cur.close()
+        cnx.close()
 
 
 # ---------- Логин ----------
@@ -92,9 +92,12 @@ def user_login():
 
     cnx = get_db()
     cur = cnx.cursor(dictionary=True)
-    cur.execute('SELECT * FROM `users` WHERE `email` = %s', (email,))
-    user = cur.fetchone()
-    cur.close(); cnx.close()
+    try:
+        cur.execute('SELECT * FROM `users` WHERE `email` = %s', (email,))
+        user = cur.fetchone()
+    finally:
+        cur.close()
+        cnx.close()
 
     if not user or not check_password_hash(user['password_hash'], password):
         return jsonify({'result': False, 'error': 'Неверный email или пароль'})
@@ -110,36 +113,42 @@ def logout():
     return redirect(url_for('login'))
 
 
-# ---------- ЛК ----------
+# ---------- Личный кабинет ----------
 @app.route('/lk')
 @login_required
 def lk():
     cnx = get_db()
     cur = cnx.cursor(dictionary=True)
-    cur.execute(
-        'SELECT `username`, `surname`, `email`, `balance` '
-        'FROM `users` WHERE `id` = %s',
-        (session['user_id'],)
-    )
-    user = cur.fetchone()
-    cur.close(); cnx.close()
+    try:
+        cur.execute(
+            'SELECT `username`, `surname`, `email`, `balance` '
+            'FROM `users` WHERE `id` = %s',
+            (session['user_id'],)
+        )
+        user = cur.fetchone()
+    finally:
+        cur.close()
+        cnx.close()
     return render_template('lk.html', user=user)
 
 
-# ---------- История ----------
-@app.route('/history')
+# ---------- История транзакций ----------
+@app.route('/transactions')
 @login_required
-def history():
+def transactions():
     cnx = get_db()
     cur = cnx.cursor(dictionary=True)
-    cur.execute(
-        'SELECT `message`, `answer`, `created_at` FROM `requests` '
-        'WHERE `user_id` = %s ORDER BY `created_at` DESC LIMIT 100',
-        (session['user_id'],)
-    )
-    rows = cur.fetchall()
-    cur.close(); cnx.close()
-    return render_template('history.html', rows=rows)
+    try:
+        cur.execute(
+            'SELECT `amount`, `description`, `created_at` FROM `transactions` '
+            'WHERE `user_id` = %s ORDER BY `created_at` DESC LIMIT 100',
+            (session['user_id'],)
+        )
+        rows = cur.fetchall()
+    finally:
+        cur.close()
+        cnx.close()
+    return render_template('transactions.html', rows=rows)
 
 
 # ---------- Чат ----------
@@ -160,11 +169,27 @@ def chat_send():
     if not message:
         return jsonify({'error': 'Пустой запрос'}), 400
 
+    COST = 50  # Стоимость одного запроса к ИИ
+
+    cnx = get_db()
+    cur = cnx.cursor(dictionary=True)
+    try:
+        cur.execute('SELECT `balance` FROM `users` WHERE `id` = %s', (session['user_id'],))
+        user = cur.fetchone()
+    except Exception as e:
+        cur.close(); cnx.close()
+        return jsonify({'error': f'Ошибка проверки баланса: {e}'}), 500
+
+    if not user or user['balance'] < COST:
+        cur.close(); cnx.close()
+        current_balance = user['balance'] if user else 0
+        return jsonify({'error': f'Недостаточно средств. Запрос стоит {COST}, ваш баланс: {current_balance}'}), 402
+
+    # Генерация ответа ИИ
     try:
         out = llm.create_chat_completion(
             messages=[
-                {'role': 'system',
-                 'content': 'Ты — вежливый помощник школьного портала. Отвечай кратко на русском.'},
+                {'role': 'system', 'content': 'Ты — вежливый помощник школьного портала. Отвечай кратко на русском.'},
                 {'role': 'user', 'content': message},
             ],
             max_tokens=400,
@@ -172,16 +197,25 @@ def chat_send():
         )
         answer = out['choices'][0]['message']['content']
     except Exception as e:
+        cur.close(); cnx.close()
         return jsonify({'error': f'Ошибка модели: {e}'}), 500
 
-    cnx = get_db()
-    cur = cnx.cursor()
-    cur.execute(
-        'INSERT INTO `requests` (`user_id`, `message`, `answer`) VALUES (%s, %s, %s)',
-        (session['user_id'], message, answer)
-    )
-    cnx.commit()
-    cur.close(); cnx.close()
+    # Списание баланса и добавление финансовой транзакции
+    try:
+        cur.execute('UPDATE `users` SET `balance` = `balance` - %s WHERE `id` = %s', (COST, session['user_id']))
+        
+        short_msg = message[:25] + "..." if len(message) > 25 else message
+        cur.execute(
+            'INSERT INTO `transactions` (`user_id`, `amount`, `description`) VALUES (%s, %s, %s)',
+            (session['user_id'], -COST, f'Запрос ИИ: "{short_msg}"')
+        )
+        cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        return jsonify({'error': f'Ошибка списания средств: {e}'}), 500
+    finally:
+        cur.close()
+        cnx.close()
 
     return jsonify({'answer': answer})
 
@@ -198,4 +232,4 @@ def login():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=True)
